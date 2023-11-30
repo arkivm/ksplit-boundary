@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include <llvm/IR/Attributes.h>
-#include <llvm/IR/CallSite.h>
+//#include <llvm/IR/CallSite.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
@@ -20,7 +20,7 @@ using std::unique_ptr;
 using llvm::ArrayRef;
 using llvm::Attribute;
 using llvm::AttributeList;
-using llvm::CallSite;
+//using llvm::CallSite;
 using llvm::dyn_cast;
 using llvm::Function;
 using llvm::LLVMContext;
@@ -171,6 +171,7 @@ StringSet getDefinedFuncs(std::unique_ptr<Module> &mod_ptr) {
   return defined_fns;
 }
 
+#if 0
 StringSet extract_transitive_closures(Module *M,
                                       StringSet &needed_kernel_funcs) {
   StringSet needed_funcs;
@@ -203,6 +204,7 @@ StringSet extract_transitive_closures(Module *M,
   }
   return needed_funcs;
 }
+#endif
 
 // Filter out the kernel bc files by keeping the files we need for the analysis
 std::pair<KernelModulesMap, KernelModulesMap> filterKernelBcFiles(String kernel_bc_list) {
