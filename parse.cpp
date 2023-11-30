@@ -41,7 +41,7 @@ namespace fs = std::filesystem;
 using Path = fs::path;
 
 const char *PROG_NAME = "ksplit-bnd";
-constexpr auto bc_files_dir = "/local/device/bc-files";
+constexpr auto bc_files_dir = "/local/devel/bc-files";
 const Path BC_FILES_REPO = Path(bc_files_dir);
 
 const std::map<String, String> driverClassMap = {
@@ -141,7 +141,7 @@ StringSet getUndefinedFuncs(std::unique_ptr<Module> &mod_ptr) {
 
     if (fn.isDeclaration() &&
         (liblcdSet->find(String(fn.getName().str())) == liblcdSet->end())) {
-      cout << fn.getName().data() << endl;
+      cout << "Undefined: " << fn.getName().data() << endl;
       undefined_fns.insert(fn.getName().str());
     }
   }
@@ -263,6 +263,7 @@ std::pair<KernelModulesMap, KernelModulesMap> filterKernelBcFiles(String kernel_
           if (fn.isDeclaration() || fn.empty()) {
             continue;
           }
+          //cout << fn.getName().str() << "\n";
           kernel_funcs.insert(fn.getName().str());
         }
         for (auto &g : mod->getGlobalList()) {
@@ -471,6 +472,8 @@ int main(int argc, char const *argv[]) {
       kernel_bc_set.insert(kv.first);
       //kernel_bc_files += " " + kv.first;
     }
+
+    kernel_bc_set.insert("drivers/base/.dd.o.bc");
 
     for (auto &kv : glob_map) {
       cout << kv.first << "\n";
