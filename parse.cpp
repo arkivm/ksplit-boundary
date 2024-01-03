@@ -41,7 +41,7 @@ namespace fs = std::filesystem;
 using Path = fs::path;
 
 const char *PROG_NAME = "ksplit-bnd";
-constexpr auto bc_files_dir = "/local/devel/bc-files";
+constexpr auto bc_files_dir = "/local/device/bc-files";
 const Path BC_FILES_REPO = Path(bc_files_dir);
 
 const std::map<String, String> driverClassMap = {
@@ -523,14 +523,36 @@ int main(int argc, char const *argv[]) {
 
     // Copy driver.ko.bc file
     cout << "1. Copy " << mod.first << " -> " << dest / ko_fname << endl;
-    fs::copy_file(mod.first, dest / ko_fname,
+    try {
+      fs::copy_file(mod.first, dest / ko_fname,
                   fs::copy_options::overwrite_existing);
+    }
+    catch (std::filesystem::filesystem_error const& ex) {
+      std::cout << "WARNING: Missing file?\n";
+      std::cout << "what():  " << ex.what() << '\n'
+                  << "path1(): " << ex.path1() << '\n'
+                  << "path2(): " << ex.path2() << '\n'
+                  << "code().value():    " << ex.code().value() << '\n'
+                  << "code().message():  " << ex.code().message() << '\n'
+                  << "code().category(): " << ex.code().category().name() << '\n';
+    }
 
     // Copy driver_kernel.ko.bc file
     cout << "2. Copy " << linked_kernel_bc << " -> " << dest / kernel_bc
          << endl;
-    fs::copy_file(linked_kernel_bc, dest / kernel_bc,
+    try {
+      fs::copy_file(linked_kernel_bc, dest / kernel_bc,
                   fs::copy_options::overwrite_existing);
+    }
+    catch (std::filesystem::filesystem_error const& ex) {
+      std::cout << "WARNING: Missing file?\n";
+      std::cout << "what():  " << ex.what() << '\n'
+                  << "path1(): " << ex.path1() << '\n'
+                  << "path2(): " << ex.path2() << '\n'
+                  << "code().value():    " << ex.code().value() << '\n'
+                  << "code().message():  " << ex.code().message() << '\n'
+                  << "code().category(): " << ex.code().category().name() << '\n';
+    }
     cout << "======================" << endl;
   }
 
