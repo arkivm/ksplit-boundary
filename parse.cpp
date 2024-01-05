@@ -41,8 +41,9 @@ namespace fs = std::filesystem;
 using Path = fs::path;
 
 const char *PROG_NAME = "ksplit-bnd";
-constexpr auto bc_files_dir = "/local/device/bc-files";
-const Path BC_FILES_REPO = Path(bc_files_dir);
+constexpr auto bc_files_dir = "/tmp/bc-files";
+Path BC_FILES_REPO = Path(bc_files_dir);
+Path kernel_root_path = "";
 
 const std::map<String, String> driverClassMap = {
     {"arch/x86", "arch_x86"},        {"drivers/base/regmap", "regmap"},
@@ -63,7 +64,7 @@ const std::map<String, String> driverClassMap = {
 LiblcdFuncs *liblcdSet;
 
 void usage() {
-  cout << PROG_NAME << " <drivers_bc_list> <kernel_bc_list> <liblcd_funcs.txt>"
+  cout << PROG_NAME << " <drivers_bc_list> <kernel_bc_list> <liblcd_funcs.txt> <dest>"
        << endl;
   cout << "\t <drivers_bc_list> contains the absolute path of all driver.ko.bc "
           "files"
@@ -74,6 +75,9 @@ void usage() {
        << endl;
   cout << "\t <liblcd_funcs.txt> contains the list of functions that are "
           "defined in liblcd"
+       << endl;
+  cout << "\t <dest>  folder where the newly assembled driver.ko.bc and the"
+          "corresponding kernel_driver.bc files should be copied to"
        << endl;
   exit(0);
 }
@@ -406,7 +410,7 @@ int main(int argc, char const *argv[]) {
 
   std::unordered_map<String, IRModule> kernel_bc_map;
 
-  if (argc != 4) {
+  if (argc != 5) {
     usage();
   }
 
@@ -414,11 +418,53 @@ int main(int argc, char const *argv[]) {
   String kernel_list(argv[2]);
   String liblcd_funcs(argv[3]);
 
+  if (argv[4]) {
+    String dest_dir(argv[4]);
+    Path dest_path(dest_dir);
+    // create directories if it doesn't exist
+    if (!fs::exists(dest_path)) {
+      fs::create_directories(dest_path);
+    }
+
+    if (fs::exists(dest_path) && fs::is_directory(dest_path)) {
+      BC_FILES_REPO = dest_path;
+      std::cout << "Generated bc-files will be stored at "
+                << dest_path << std::endl;
+    } else {
+      std::cout << "The provided " << dest_path << " is not a valid path."
+        " Defaulting dest to " << BC_FILES_REPO << std::endl;
+    }
+  }
+
   populateLiblcdFuncs(liblcd_funcs);
 
   ModuleMap ko_map;
 
   std::ifstream driver_bc_files(driver_list);
+  // extract base directory of the kernel
+  std::ifstream kernel_bc_list(kernel_list);
+
+  if (kernel_bc_list.is_open()) {
+    String kernel_obj;
+    String main_bc("/init/.main.o.bc");
+
+    while (std::getline(kernel_bc_list, kernel_obj)) {
+      // Look for /init/.main.o.bc in the kernel bc files
+      if (kernel_obj.find(main_bc) != std::string::npos) {
+        // Construct a path of that bc file
+        Path bc_path = Path(kernel_obj);
+
+        // Check if it's valid
+        if (fs::exists(bc_path) && bc_path.is_absolute()) {
+          Path parent_path = bc_path.parent_path().remove_filename();
+          if (fs::exists(parent_path)) {
+            kernel_root_path = parent_path;
+            std::cout << "Linux kernel path: " << parent_path << "\n";
+          }
+        }
+      }
+    }
+  }
 
   auto [kernel_map, kernel_glob_map] = filterKernelBcFiles(kernel_list);
 
@@ -473,7 +519,20 @@ int main(int argc, char const *argv[]) {
       //kernel_bc_files += " " + kv.first;
     }
 
-    kernel_bc_set.insert("drivers/base/.dd.o.bc");
+    Path driver_base_rel = "./drivers/base/.dd.o.bc";
+    if (fs::exists(kernel_root_path)) {
+      Path driver_base = kernel_root_path;
+      driver_base += driver_base_rel;
+      if (fs::exists(driver_base)) {
+        kernel_bc_set.insert(driver_base.string());
+      }
+    } else {
+      std::cout << "Could not add "
+        << driver_base_rel
+        << " to the kernel_bc list for "
+        << mod.first
+        << std::endl;
+    }
 
     for (auto &kv : glob_map) {
       cout << kv.first << "\n";
